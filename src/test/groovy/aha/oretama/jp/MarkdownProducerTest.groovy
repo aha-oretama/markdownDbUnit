@@ -8,7 +8,9 @@ import spock.lang.Specification
 class MarkdownProducerTest extends Specification {
 
   def produceFromMarkdownTest() {
+
     expect:
-    new MarkdownProducer(new File("src/test/resources/testdata.md")).produce()
+    new MarkdownProducer(new File("src/test/resources/testdata.md")).produceFromMarkdown()
+
   }
 }

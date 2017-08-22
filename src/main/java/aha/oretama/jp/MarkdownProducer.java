@@ -39,15 +39,15 @@ public class MarkdownProducer implements IDataSetProducer {
     private static final Logger logger = LoggerFactory.getLogger(MarkdownProducer.class);
     private static final IDataSetConsumer EMPTY_CONSUMER = new DefaultConsumer();
     private IDataSetConsumer _consumer;
-    private String _theFile;
+    private File file;
 
     private static final List<String> EXTENSIONS = Arrays.asList("md", "markdown");
     private static final MutableDataHolder OPTIONS = new MutableDataSet()
         .set(Parser.EXTENSIONS, Collections.singletonList(TablesExtension.create()));
 
-    public MarkdownProducer(File theFile) {
+    public MarkdownProducer(File file) {
         this._consumer = EMPTY_CONSUMER;
-        this._theFile = theFile.getAbsolutePath();
+        this.file = file;
     }
 
     public void setConsumer(IDataSetConsumer consumer) throws DataSetException {
@@ -57,20 +57,24 @@ public class MarkdownProducer implements IDataSetProducer {
 
     public void produce() throws DataSetException {
         logger.debug("produce() - start");
-        File file = new File(this._theFile);
-        if (!file.isFile() || !EXTENSIONS.contains(FilenameUtils.getExtension(file.getAbsolutePath()))) {
-            throw new DataSetException("'" + this._theFile + "' should be a file");
+        String path = file.getAbsolutePath();
+        if (!file.isFile() || !EXTENSIONS.contains(FilenameUtils.getExtension(path))) {
+            throw new DataSetException("'" + path + "' should be a file");
         }
 
         this._consumer.startDataSet();
 
         try {
-            produceFromMarkdown(FileUtils.readFileToString(file, Charset.defaultCharset()));
+            produceFromMarkdown();
         } catch (IOException ioEx) {
-            throw new DataSetException("error reading file '" + file.getAbsolutePath() + "'", ioEx);
+            throw new DataSetException("error reading file '" + path + "'", ioEx);
         }
 
         this._consumer.endDataSet();
+    }
+
+    private void produceFromMarkdown() throws IOException, DataSetException {
+        produceFromMarkdown(FileUtils.readFileToString(file, Charset.defaultCharset()));
     }
 
     private void produceFromMarkdown(String markdown) throws DataSetException {
