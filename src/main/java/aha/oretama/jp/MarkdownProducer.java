@@ -1,25 +1,30 @@
 package aha.oretama.jp;
 
-import com.vladsch.flexmark.ast.NodeVisitor;
+import com.vladsch.flexmark.ast.Document;
+import com.vladsch.flexmark.ast.Heading;
+import com.vladsch.flexmark.ast.Node;
+import com.vladsch.flexmark.ast.Text;
 import com.vladsch.flexmark.ext.tables.TableBlock;
 import com.vladsch.flexmark.ext.tables.TableBody;
-import com.vladsch.flexmark.ext.tables.TableCaption;
 import com.vladsch.flexmark.ext.tables.TableCell;
 import com.vladsch.flexmark.ext.tables.TableHead;
-import com.vladsch.flexmark.ext.tables.TableRow;
-import com.vladsch.flexmark.ext.tables.TableSeparator;
-import com.vladsch.flexmark.ext.tables.TableVisitorExt;
+import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.parser.Parser;
-import com.vladsch.flexmark.util.sequence.BasedSequence;
+import com.vladsch.flexmark.util.options.MutableDataHolder;
+import com.vladsch.flexmark.util.options.MutableDataSet;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.dbunit.dataset.Column;
 import org.dbunit.dataset.DataSetException;
+import org.dbunit.dataset.DefaultTableMetaData;
+import org.dbunit.dataset.ITableMetaData;
 import org.dbunit.dataset.datatype.DataType;
 import org.dbunit.dataset.stream.DefaultConsumer;
 import org.dbunit.dataset.stream.IDataSetConsumer;
@@ -28,7 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * @author sekineyasufumi on 2017/08/22.
+ * @author aha-oretama
  */
 public class MarkdownProducer implements IDataSetProducer {
     private static final Logger logger = LoggerFactory.getLogger(MarkdownProducer.class);
@@ -36,7 +41,9 @@ public class MarkdownProducer implements IDataSetProducer {
     private IDataSetConsumer _consumer;
     private String _theFile;
 
-    private static final List<String> EXTENSIONS = Arrays.asList(".md", ".markdown");
+    private static final List<String> EXTENSIONS = Arrays.asList("md", "markdown");
+    private static final MutableDataHolder OPTIONS = new MutableDataSet()
+        .set(Parser.EXTENSIONS, Collections.singletonList(TablesExtension.create()));
 
     public MarkdownProducer(File theFile) {
         this._consumer = EMPTY_CONSUMER;
@@ -50,66 +57,75 @@ public class MarkdownProducer implements IDataSetProducer {
 
     public void produce() throws DataSetException {
         logger.debug("produce() - start");
-        File markdown = new File(this._theFile);
-        if (!markdown.isFile() || !EXTENSIONS.contains(FilenameUtils.getExtension(markdown.getAbsolutePath()))) {
+        File file = new File(this._theFile);
+        if (!file.isFile() || !EXTENSIONS.contains(FilenameUtils.getExtension(file.getAbsolutePath()))) {
             throw new DataSetException("'" + this._theFile + "' should be a file");
         }
 
         this._consumer.startDataSet();
 
-        produceFromMarkdown(markdown);
+        try {
+            produceFromMarkdown(FileUtils.readFileToString(file, Charset.defaultCharset()));
+        } catch (IOException ioEx) {
+            throw new DataSetException("error reading file '" + file.getAbsolutePath() + "'", ioEx);
+        }
 
         this._consumer.endDataSet();
     }
 
-    private void produceFromMarkdown(File file) {
-        NodeVisitor visitor = new NodeVisitor(TableVisitorExt.VISIT_HANDLERS(new TableVisitor()));
-        Parser parser = Parser.builder().build();
-        try {
-            visitor.visit(parser.parse(FileUtils.readFileToString(file, Charset.defaultCharset())));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+    private void produceFromMarkdown(String markdown) throws DataSetException {
+        Parser parser = Parser.builder(OPTIONS).build();
+        Document document = parser.parse(markdown);
 
-    protected static class TableVisitor implements com.vladsch.flexmark.ext.tables.TableVisitor {
+        Node node = document.getFirstChild();
 
-        public void visit(TableBlock tableBlock) {
-            System.out.println(tableBlock.toAstString(false));
-        }
-
-        public void visit(TableHead tableHead) {
-            System.out.println(tableHead.toAstString(false));
-
-            BasedSequence[] basedSequences =tableHead.getSegments();
-
-            Column[] columns = new Column[basedSequences.length];
-            for(int i = 0; i < basedSequences.length; ++i) {
-                String columnName = basedSequences[i].unescape();
-                columnName = columnName.trim();
-                columns[i] = new Column(columnName, DataType.UNKNOWN);
+        while (node != null) {
+            String tableName = null;
+            if (node instanceof Heading) {
+                Text text = (Text) node.getFirstChild();
+                tableName = text.getChars().trim().unescape();
             }
-        }
 
-        public void visit(TableSeparator tableSeparator) {
-            System.out.println(tableSeparator.toAstString(false));
-        }
+            if (node instanceof TableBlock) {
+                Node tableNode = node.getFirstChild();
+                while (tableNode != null) {
 
-        public void visit(TableBody tableBody) {
-            System.out.println(tableBody.toAstString(false));
-        }
+                    // make columns from TableHead.
+                    if (tableNode instanceof TableHead) {
+                        // TableHead -> TableRow -> TableCell
+                        Node tableCell = tableNode.getFirstChild().getFirstChild();
+                        List<Column> columns = new ArrayList<Column>();
+                        while (tableCell != null && tableCell instanceof TableCell) {
+                            String columnName = ((TableCell) tableCell).getText().trim().unescape();
+                            columns.add(new Column(columnName, DataType.UNKNOWN));
 
-        public void visit(TableRow tableRow) {
-            System.out.println(tableRow.toAstString(false));
-        }
+                            tableCell = tableCell.getNext();
+                        }
 
-        public void visit(TableCell tableCell) {
-            System.out.println(tableCell.toAstString(false));
-        }
+                        ITableMetaData metaData =
+                            new DefaultTableMetaData(tableName, columns.toArray(new Column[0]));
+                        this._consumer.startTable(metaData);
 
-        public void visit(TableCaption tableCaption) {
-            System.out.println(tableCaption.toAstString(false));
-        }
+                    // make rows from TableBody.
+                    } else if (tableNode instanceof TableBody) {
 
+                        // TableBody -> TableRow -> TableCell
+                        Node tableCell = tableNode.getFirstChild().getFirstChild();
+                        List<Object> row = new ArrayList<Object>();
+                        while (tableCell != null && tableCell instanceof TableCell) {
+                            String cell = ((TableCell) tableCell).getText().trim().unescape();
+                            row.add(cell);
+
+                            tableCell = tableCell.getNext();
+                        }
+                        this._consumer.row(row.toArray());
+                    }
+
+                    tableNode = tableNode.getNext();
+                }
+            }
+
+            node = node.getNext();
+        }
     }
 }
