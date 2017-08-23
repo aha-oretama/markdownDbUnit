@@ -8,16 +8,15 @@ import com.vladsch.flexmark.ext.tables.TableBlock;
 import com.vladsch.flexmark.ext.tables.TableBody;
 import com.vladsch.flexmark.ext.tables.TableCell;
 import com.vladsch.flexmark.ext.tables.TableHead;
+import com.vladsch.flexmark.ext.tables.TableRow;
 import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.parser.Parser;
-import com.vladsch.flexmark.util.options.MutableDataHolder;
 import com.vladsch.flexmark.util.options.MutableDataSet;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -42,8 +41,6 @@ public class MarkdownProducer implements IDataSetProducer {
     private File file;
 
     private static final List<String> EXTENSIONS = Arrays.asList("md", "markdown");
-    private static final MutableDataHolder OPTIONS = new MutableDataSet()
-        .set(Parser.EXTENSIONS, Collections.singletonList(TablesExtension.create()));
 
     public MarkdownProducer(File file) {
         this._consumer = EMPTY_CONSUMER;
@@ -78,16 +75,16 @@ public class MarkdownProducer implements IDataSetProducer {
     }
 
     private void produceFromMarkdown(String markdown) throws DataSetException {
+        MutableDataSet OPTIONS = new MutableDataSet().set(Parser.EXTENSIONS, Arrays.asList(TablesExtension.create()));
         Parser parser = Parser.builder(OPTIONS).build();
         Document document = parser.parse(markdown);
 
         Node node = document.getFirstChild();
 
+        String tableName = null;
         while (node != null) {
-            String tableName = null;
             if (node instanceof Heading) {
-                Text text = (Text) node.getFirstChild();
-                tableName = text.getChars().trim().unescape();
+                tableName = getTextWithoutEmphasis(node);
             }
 
             if (node instanceof TableBlock) {
@@ -100,8 +97,7 @@ public class MarkdownProducer implements IDataSetProducer {
                         Node tableCell = tableNode.getFirstChild().getFirstChild();
                         List<Column> columns = new ArrayList<Column>();
                         while (tableCell != null && tableCell instanceof TableCell) {
-                            String columnName = ((TableCell) tableCell).getText().trim().unescape();
-                            columns.add(new Column(columnName, DataType.UNKNOWN));
+                            columns.add(new Column(getTextWithoutEmphasis(tableCell), DataType.UNKNOWN));
 
                             tableCell = tableCell.getNext();
                         }
@@ -113,16 +109,23 @@ public class MarkdownProducer implements IDataSetProducer {
                     // make rows from TableBody.
                     } else if (tableNode instanceof TableBody) {
 
-                        // TableBody -> TableRow -> TableCell
-                        Node tableCell = tableNode.getFirstChild().getFirstChild();
-                        List<Object> row = new ArrayList<Object>();
-                        while (tableCell != null && tableCell instanceof TableCell) {
-                            String cell = ((TableCell) tableCell).getText().trim().unescape();
-                            row.add(cell);
+                        // TableBody -> TableRow
+                        Node tableRow = tableNode.getFirstChild();
+                        while (tableRow != null && tableRow instanceof TableRow) {
+                            // TableRow -> TableCell
+                            Node tableCell = tableRow.getFirstChild();
 
-                            tableCell = tableCell.getNext();
+                            List<Object> row = new ArrayList<Object>();
+                            while (tableCell != null && tableCell instanceof TableCell) {
+                                String cell = getTextWithoutEmphasis(tableCell);
+                                row.add(cell.equals("null") ? null : cell);
+
+                                tableCell = tableCell.getNext();
+                            }
+                            this._consumer.row(row.toArray());
+                            tableRow = tableRow.getNext();
                         }
-                        this._consumer.row(row.toArray());
+                        this._consumer.endTable();
                     }
 
                     tableNode = tableNode.getNext();
@@ -131,5 +134,21 @@ public class MarkdownProducer implements IDataSetProducer {
 
             node = node.getNext();
         }
+    }
+
+    /**
+     * Get string from node without emphasis.
+     * @param node {@link Node}
+     * @return first child's string
+     */
+    private String getTextWithoutEmphasis(Node node) {
+        Node nodeChild = node.getFirstChild();
+        if (nodeChild == null) {
+            return "";
+        }
+
+        Text text =
+            (Text) (nodeChild instanceof Text ? nodeChild : nodeChild.getChildOfType(Text.class));
+        return text.getChars().trim().unescape();
     }
 }
