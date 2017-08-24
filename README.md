@@ -9,7 +9,7 @@ Why I made markdown's extention? It is a simple reason. Markdown has high affini
 GitHub supports markdown in high level.  
 If your project has many test data's files for testing and your service's enhancement will change the files drasticly, then, you want to see the differences betweens new and old files in review of pull request. Is it convinience to see the differences as follows!?
 
-![pullRequestDifferences](https://raw.github.com/aha-oretama/markdownDbUnit/master/image/pullRequestDifferences.png)
+![pullRequestDifferences](https://raw.github.com/aha-oretama/markdownDbUnit/master/images/pullRequestDifferences.png)
 
 That's the reason!
 
@@ -19,7 +19,8 @@ That's the reason!
 # Usage
 
 ## Maven
-Add this repository and depenedency.
+Add this repository and depenedency.  
+This dependency includes DBUnit, so you can now use DBUnit.  
 
 ```xml
     <repositories>
@@ -39,7 +40,6 @@ Add this repository and depenedency.
     </dependencies>
 ```
 
-This dependency includes DBUnit, so you can now use DBUnit.  
 If you want to use different version's DBUnit,
 exclude dependency and add dependency as follow.
 
