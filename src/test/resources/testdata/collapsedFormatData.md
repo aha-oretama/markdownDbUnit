@@ -6,7 +6,7 @@ Here is comment
 
 # User
 
-user_id | *first_name* | __last_name__ | sex | age | 
+user_id | *first_name* | __last_name__ | gender | age | 
 ---------| ----------- |:-------- | ----: |:---:|
  _00001_ | `hogehoge` | taro | male | 20 |
 
