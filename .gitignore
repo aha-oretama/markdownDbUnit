@@ -19,3 +19,6 @@ nbbuild/
 dist/
 nbdist/
 
+# maven
+target
+output
