@@ -29,7 +29,7 @@ class MarkdownDataSetTest extends Specification {
   private IDatabaseTester databaseTester = new JdbcDatabaseTester(JDBC_DRIVER, JDBC_URL, USER, PASSWORD)
 
   private static
-  final String USER_SQL = "SELECT user_id,first_name,last_name,sex,age FROM user where user_id = ?"
+  final String USER_SQL = "SELECT user_id,first_name,last_name,gender,age FROM user where user_id = ?"
   private static final String SCORE_SQL = "SELECT user_id,subject,score FROM score WHERE user_id = ?"
 
   void setupSpec() {
@@ -42,10 +42,10 @@ class MarkdownDataSetTest extends Specification {
     cleanInsert("src/test/resources/testdata/${testData}")
 
     then:
-    shouldMatchDatabaseUserColumnToExpectedValues(userId, firstName, lastName, sex, age)
+    shouldMatchDatabaseUserColumnToExpectedValues(userId, firstName, lastName, gender, age)
 
     where:
-    test                                                                                    | testData                 | userId  | firstName  | lastName | sex    | age
+    test                                                                                    | testData                 | userId  | firstName  | lastName | gender    | age
     "Inserted data have all column."                                                        | 'baseData.md'            | '00001' | 'hogehoge' | 'taro'   | 'male' | 20
     "Lacked column will be null or default value, integer is 0"                             | 'lackedColumnData.md'    | '00001' | 'hogehoge' | null     | 'male' | 0
     "Collapsed format data have save result as formatted data"                              | 'collapsedFormatData.md' | '00001' | 'hogehoge' | 'taro'   | 'male' | 20
@@ -74,7 +74,7 @@ class MarkdownDataSetTest extends Specification {
     assert score == resultSet.getInt("score")
   }
 
-  private void shouldMatchDatabaseUserColumnToExpectedValues(String userId, String firstName, String lastName, String sex, Integer age) {
+  private void shouldMatchDatabaseUserColumnToExpectedValues(String userId, String firstName, String lastName, String gender, Integer age) {
     Connection connection = databaseTester.getConnection().getConnection()
     PreparedStatement userStatement = connection.prepareStatement(USER_SQL)
     userStatement.setString(1, userId)
@@ -84,7 +84,7 @@ class MarkdownDataSetTest extends Specification {
     assert userId == resultSet.getString("user_id")
     assert firstName == resultSet.getString("first_name")
     assert lastName == resultSet.getString("last_name")
-    assert sex == resultSet.getString("sex")
+    assert gender == resultSet.getString("gender")
     assert age == resultSet.getInt("age")
   }
 
