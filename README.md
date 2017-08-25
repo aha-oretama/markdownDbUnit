@@ -25,7 +25,7 @@ This dependency includes DBUnit, so you can now use DBUnit.
 ```xml
     <repositories>
         <repository>
-            <id>holiday-jp</id>
+            <id>markdownDbUnit</id>
             <url>https://raw.github.com/aha-oretama/markdownDbUnit/mvn-repo/</url>
         </repository>
     </repositories>
@@ -35,7 +35,7 @@ This dependency includes DBUnit, so you can now use DBUnit.
             <groupId>aha-oretama.jp</groupId>
             <artifactId>markdownDbUnit</artifactId>
             <version>1.0.0-RC1</version>
-            <scops>test</scops>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 ```
@@ -49,7 +49,7 @@ exclude dependency and add dependency as follow.
             <groupId>aha-oretama.jp</groupId>
             <artifactId>markdownDbUnit</artifactId>
             <version>1.0.0-RC1</version>
-            <scops>test</scops>
+            <scope>test</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>org.dbunit</artifactId>
@@ -78,6 +78,28 @@ Here is the example for clean, insert. The point is only using `MarkdownDataSet`
     DatabaseOperation.CLEAN_INSERT.execute(connection, dataSet)
   }
 ```
+
+## MarkDown Format
+Markdown's table represents a database's table and data.
+A file can include multiple tables.
+
+Support align columns feature. 
+
+```markdown
+# User
+| user_id | first_name | last_name | sex | age | 
+|---------| ----------- |:-------- | ----: |:---:|
+| 00001 | hogehoge | taro | male | 20 |
+
+# Score 
+user_id | subject | score
+------- | :-------: |:-----
+00001 | Mathematics | 100
+
+```
+
+If columns which exit database's table are not written in markdown's table,
+the columns are treated as `null`. The columns written as `null` are also treated as `null`. 
 
 # Supoort 
 * DBUnit 2.5.0 or above

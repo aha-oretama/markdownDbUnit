@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>aha-oretama.jp</groupId>
-    <artifactId>markdown2xml</artifactId>
+    <artifactId>markdownDbUnit</artifactId>
     <version>1.0.0-RC1</version>
 
     <name>markdownDbUnit</name>
