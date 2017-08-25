@@ -99,7 +99,8 @@ user_id | subject | score
 ```
 
 If columns which exit database's table are not written in markdown's table,
-the columns are treated as `null`. The columns written as `null` are also treated as `null`. 
+the columns are treated as `null`. The columns written as `null` are also treated as `null`.
+Empty columns are treated as empty string. 
 
 # Supoort 
 * DBUnit 2.5.0 or above
